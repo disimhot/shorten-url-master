@@ -12,7 +12,7 @@ celery = Celery(
     backend="redis://172.17.155.105:6379/0",
 )
 
-x@shared_task
+@shared_task
 def delete_unused_links(days: int):
     """
     Celery-таска для удаления неиспользуемых ссылок.
