@@ -24,7 +24,7 @@ async def delete_old_links(days: int):
     """
     Асинхронная функция для удаления старых ссылок.
     """
-    async with async_session() as session:  # Создаем сессию
+    async with async_session() as session:
         cutoff_date = datetime.now() - timedelta(days=days)
         result = await session.execute(select(Link).filter(Link.last_used_at < cutoff_date))
         links_to_delete = result.scalars().all()
