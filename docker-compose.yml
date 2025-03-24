@@ -1,0 +1,45 @@
+version: "3.7"
+
+services:
+  db:
+    image: postgres:16
+    container_name: db_app
+    environment:
+      POSTGRES_USER: "${DB_USER}"
+      POSTGRES_PASSWORD: "${DB_PASS}"
+      POSTGRES_DB: "${DB_NAME}"
+    ports:
+      - "5432:5431"
+
+  redis:
+    image: redis:7
+    container_name: redis_app
+    ports:
+      - "6379:6379"
+
+  fastapi_app:
+    build:
+      context: .
+    container_name: fastapi_app
+    ports:
+      - "9999:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - PYTHONPATH=/fastapi_app/src:$PYTHONPATH
+    volumes:
+      - ./src:/fastapi_app/src
+    command: ["/fastapi_app/docker/app.sh"]
+
+  celery:
+    build:
+      context: .
+    container_name: celery_app
+    environment:
+      - PYTHONPATH=/fastapi_app/src:$PYTHONPATH
+    volumes:
+      - ./src:/fastapi_app/src
+    command: ["/fastapi_app/docker/celery.sh", "celery"]
+    depends_on:
+      - redis
