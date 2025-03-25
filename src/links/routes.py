@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi_cache.decorator import cache
 from celery.result import AsyncResult
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,7 +182,6 @@ async def update_link(
 
 
 @router.get("/stats/{short_code}")
-@cache(expire=60)  # Кэшируем результат на 60 секунд
 async def get_link_stats(short_code: str, db: AsyncSession = Depends(get_db)):
     """
     Получение статистики для сокращенной ссылки.
@@ -192,19 +190,19 @@ async def get_link_stats(short_code: str, db: AsyncSession = Depends(get_db)):
     """
     try:
         result = await db.execute(select(Link).filter_by(short_code=short_code))
-        link = result.scalars().first()
+        links = result.scalars().all()
 
-        if not link:
+        if not links:
             raise HTTPException(status_code=404, detail="Ссылка не найдена")
 
-        content = {
+        response = [{
             "original_url": link.original_url,
             "created_at": str(link.created_at),
             "clicks": link.clicks,
             "last_used_at": str(link.last_used_at)
-        }
+        } for link in links]
 
-        return JSONResponse(status_code=200, content=content)
+        return response
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -241,7 +239,6 @@ async def search_link(original_url: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/history/")
-@cache(expire=60)  # Кэшируем результат на 60 секунд
 async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Request = Request):
     """
         Получение информации об архивированных ссылках
@@ -259,13 +256,15 @@ async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Req
     #         detail="Пользователь не авторизован",
     #     )
     try:
-        result = await db.execute(select(LinkArchive))
+        query = select(LinkArchive)
+        result = await db.execute(query)
+
         links = result.scalars().all()
         print('links', links)
         if not links:
             raise HTTPException(status_code=404, detail="Ссылки не найдены")
 
-        return JSONResponse(status_code=200, content=[
+        return [
             {
                 "short_code": link.short_code,
                 "original_url": link.original_url,
@@ -273,9 +272,10 @@ async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Req
                 "reason": link.reason
             }
             for link in links
-        ])
+        ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/delete-unused-links")
 async def delete_unused_links_handler(days: int, db: AsyncSession = Depends(get_db)):
