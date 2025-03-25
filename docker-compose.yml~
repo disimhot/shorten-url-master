@@ -1,45 +1,48 @@
-version: "3.7"
+version: '3.8'
 
 services:
   db:
-    image: postgres:16
-    container_name: db_app
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: "${POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
     ports:
-      - "5432:5431"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
     container_name: redis_app
-    ports:
-      - "6379:6379"
+    command: --port 5370
+    expose:
+      - 5370
 
-  fastapi_app:
-    build:
-      context: .
-    container_name: fastapi_app
-    ports:
-      - "9999:8000"
+  backend:
+    build: .
+    container_name: shorten-url-backend
+    restart: always
     depends_on:
       - db
       - redis
-    environment:
-      - PYTHONPATH=/fastapi_app/src:$PYTHONPATH
-    volumes:
-      - ./src:/fastapi_app/src
-    command: ["/fastapi_app/docker/app.sh"]
+    env_file:
+      - .env
+    ports:
+      - "9999:8000"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   celery:
-    build:
-      context: .
+    build: .
     container_name: celery_app
-    environment:
-      - PYTHONPATH=/fastapi_app/src:$PYTHONPATH
-    volumes:
-      - ./src:/fastapi_app/src
-    command: ["/fastapi_app/docker/celery.sh", "celery"]
     depends_on:
       - redis
+    command: ["celery", "-A", "src.tasks.tasks", "worker", "--loglevel=info", "--pool=solo"]
+
+
+volumes:
+  postgres_data:

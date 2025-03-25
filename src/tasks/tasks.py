@@ -6,19 +6,16 @@ from sqlalchemy.future import select
 from src.models.models import Link, LinkArchive
 from src.database import async_session
 
-celery = Celery(
-    "tasks",
-    broker="redis://172.17.155.105:6379/0",
-    backend="redis://172.17.155.105:6379/0",
-)
 
-@shared_task
+celery = Celery('tasks', broker='redis://localhost:6379', backend='redis://localhost:6379')
+
+@celery.task
 def delete_unused_links(days: int):
     """
     Celery-таска для удаления неиспользуемых ссылок.
     """
     print(f"Запущена таска: delete_unused_links({days})")
-    asyncio.run(delete_old_links(days))  # Запускаем async-функцию
+    asyncio.run(delete_old_links(days))
 
 async def delete_old_links(days: int):
     """
@@ -30,8 +27,6 @@ async def delete_old_links(days: int):
         links_to_delete = result.scalars().all()
 
         if links_to_delete:
-            print(f"Найдено {len(links_to_delete)} неиспользуемых ссылок")
-
             for link in links_to_delete:
                 link_archive = LinkArchive(
                     short_code=link.short_code,

@@ -25,8 +25,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # redis = aioredis.from_url("redis://localhost")
-    redis = aioredis.from_url("redis://172.17.155.105:6379")
+    redis = aioredis.from_url("redis://localhost:6379")
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
     yield
 
@@ -56,9 +55,6 @@ app.include_router(links_router, prefix="/links", tags=["Links"])
 @app.get("/")
 async def read_root():
     return {"message": "API is running!"}
-
-
-# Instrumentator().instrument(app).expose(app)
 
 
 @app.on_event("startup")

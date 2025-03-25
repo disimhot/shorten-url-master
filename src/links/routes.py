@@ -248,13 +248,11 @@ async def delete_unused_links_handler(days: int, db: AsyncSession = Depends(get_
     :return: Статус задачи
     """
     try:
-        print("МЫ ТУТ - перед запуском таски")  # Проверка
-        delete_unused_links.delay(days)  # Используйте delay вместо apply_async
-        print(f"Запустили таску")  # Проверка
+        task = delete_unused_links.delay(days)
         return JSONResponse(
             status_code=200,
             content={
-                # "task_id": task.id,
+                "task_id": task.id,
                 "status": "task started"
             }
         )
