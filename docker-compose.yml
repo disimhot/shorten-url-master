@@ -12,7 +12,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASS}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "1221:5432"  # Используем порт 1221 для подключения извне
+      - "1221:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

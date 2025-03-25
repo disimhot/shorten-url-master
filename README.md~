@@ -66,6 +66,7 @@ Render не поддерживает docker-compose, поэтому работа
 ```
 {
   "username": "string",
+  "email": "string",
   "password": "string"
 }
 ```
