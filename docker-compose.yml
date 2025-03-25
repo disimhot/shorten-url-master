@@ -11,9 +11,8 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASS}
       - POSTGRES_DB=${DB_NAME}
-    command: -p 1221
-    expose:
-      - 1221
+    ports:
+      - "1221:5432"  # Используем порт 1221 для подключения извне
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -35,7 +34,11 @@ services:
       - .env
     ports:
       - "9999:8000"
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn main:app --host 0.0.0.0 --port 8000
+      "
 
   celery:
     build: .
@@ -43,6 +46,8 @@ services:
     command: ["celery", "-A", "src.tasks.tasks", "worker", "--loglevel=info", "--pool=solo"]
     depends_on:
       - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis_app:5370/0
 
 volumes:
   postgres_data:

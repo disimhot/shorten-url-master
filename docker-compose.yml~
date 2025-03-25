@@ -12,16 +12,15 @@ services:
       - POSTGRES_PASSWORD=${DB_PASS}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "5432:5432"
+      - "1221:5432"  # Используем порт 1221 для подключения извне
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
     container_name: redis_app
-    command: --port 5370
-    expose:
-      - 5370
+    ports:
+      - "6379:6379"
 
   backend:
     build: .
@@ -34,15 +33,20 @@ services:
       - .env
     ports:
       - "9999:8000"
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      uvicorn main:app --host 0.0.0.0 --port 8000
+      "
 
   celery:
     build: .
     container_name: celery_app
+    command: ["celery", "-A", "src.tasks.tasks", "worker", "--loglevel=info", "--pool=solo"]
     depends_on:
       - redis
-    command: ["celery", "-A", "src.tasks.tasks", "worker", "--loglevel=info", "--pool=solo"]
-
+    environment:
+      - CELERY_BROKER_URL=redis://redis_app:5370/0
 
 volumes:
   postgres_data:
