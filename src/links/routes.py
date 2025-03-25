@@ -10,7 +10,7 @@ from sqlalchemy import select
 from datetime import datetime
 
 from src.links.models import LinkCreate
-from src.models.models import Link
+from src.models.models import Link, LinkArchive
 from src.database import get_db
 from src.utils import generate_short_code
 from src.auth.services import get_current_user
@@ -182,8 +182,8 @@ async def update_link(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{short_code}/stats")
-@cache(expire=1200)  # Кэшируем результат на 1200 секунд (20 минут)
+@router.get("/stats/{short_code}")
+@cache(expire=60)  # Кэшируем результат на 60 секунд
 async def get_link_stats(short_code: str, db: AsyncSession = Depends(get_db)):
     """
     Получение статистики для сокращенной ссылки.
@@ -240,6 +240,43 @@ async def search_link(original_url: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/history/")
+@cache(expire=60)  # Кэшируем результат на 60 секунд
+async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Request = Request):
+    """
+        Получение информации об архивированных ссылках
+        :param db: Сессия базы данных.
+        :param request: Запрос с куками авторизации
+        :return: JSON-ответ с информацией об архивированных ссылках
+    """
+
+    # token = request.cookies.get("access_token")
+    # current_user = await get_current_user(db, token)
+    # print('current_user', current_user)
+    # if not token or current_user:
+    #     raise HTTPException(
+    #         status_code=401,
+    #         detail="Пользователь не авторизован",
+    #     )
+    try:
+        result = await db.execute(select(LinkArchive))
+        links = result.scalars().all()
+        print('links', links)
+        if not links:
+            raise HTTPException(status_code=404, detail="Ссылки не найдены")
+
+        return JSONResponse(status_code=200, content=[
+            {
+                "short_code": link.short_code,
+                "original_url": link.original_url,
+                "deleted_at": str(link.deleted_at),
+                "reason": link.reason
+            }
+            for link in links
+        ])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/delete-unused-links")
 async def delete_unused_links_handler(days: int, db: AsyncSession = Depends(get_db)):
     """
@@ -258,6 +295,7 @@ async def delete_unused_links_handler(days: int, db: AsyncSession = Depends(get_
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/task-status/{task_id}")
 async def get_task_status(task_id: str):
