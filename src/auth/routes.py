@@ -115,7 +115,7 @@ async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Req
         }
         return user_info
     except Exception as e:
-        return HTTPException(status_code=500, detail="Пользователь не авторизован")
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Пользователь не авторизован")
 
 
 @router.post("/logout")
@@ -123,7 +123,7 @@ async def logout(request: Request, response: Response):
     """
         Логирование пользователя (удаление токена и завершение сессии).
 
-        :return: Сообщение о успешном выходе из системы.
+        :return: Сообщение об успешном выходе из системы.
     """
     try:
         token = request.cookies.get("access_token")

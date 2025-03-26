@@ -8,6 +8,7 @@ from src.database import async_session
 
 
 celery = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
+# celery = Celery('tasks', broker='redis://localhost:6379', backend='redis://localhost:6379/0')
 
 @celery.task
 def delete_unused_links(days: int):
@@ -22,8 +23,6 @@ async def delete_old_links(days: int):
         cutoff_date = datetime.now() - timedelta(days=days)
         result = await session.execute(select(Link).filter(Link.last_used_at < cutoff_date))
         links_to_delete = result.scalars().all()
-        print('links_to_delete', links_to_delete)
-
         if links_to_delete:
             for link in links_to_delete:
                 link_archive = LinkArchive(
