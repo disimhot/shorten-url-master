@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi_cache.decorator import cache
+
 from celery.result import AsyncResult
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -239,6 +241,7 @@ async def search_link(original_url: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/history/")
+@cache(expire=60)
 async def get_current_user_info(db: AsyncSession = Depends(get_db), request: Request = Request):
     """
         Получение информации об архивированных ссылках
